@@ -1,0 +1,21 @@
+
+spring:
+  profiles:
+    active: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    hikari:
+      jdbc-url: jdbc:h2:tcp://localhost/~/springbatch
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+  batch:
+    job:
+      names: batchJob
+    jdbc:
+      initialize-schema: always
