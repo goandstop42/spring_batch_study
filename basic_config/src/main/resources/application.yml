@@ -10,10 +10,10 @@ spring:
       on-profile: local
   datasource:
     hikari:
-      jdbc-url: jdbc:h2:tcp://localhost/~/springbatch
-      username: sa
-      password:
-      driver-class-name: org.h2.Driver
+      jdbc-url: jdbc:mysql://localhost:3306/springbatch?useUnicode=true&characterEncoding=utf8
+      username: springbatch
+      password: springbatch
+      driver-class-name: com.mysql.jdbc.Driver
   batch:
     job:
       names: batchJob
