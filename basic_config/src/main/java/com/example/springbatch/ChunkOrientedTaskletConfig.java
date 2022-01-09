@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 @Configuration
-public class ChunkConfig {
+public class ChunkOrientedTaskletConfig {
 	private final JobBuilderFactory jobBuilderFactory;
 	private final StepBuilderFactory stepBuilderFactory;
 
@@ -41,21 +41,23 @@ public class ChunkConfig {
     public Step step1() {
     	
         return stepBuilderFactory.get("step1")
-            .<String, String>chunk(5)
-            .reader(new ListItemReader<>(Arrays.asList("item1", "item2", "item3", "item4", "item5")))
+            .<String, String>chunk(2)
+            .reader(new ListItemReader<>(Arrays.asList("item1", "item2", "item3", "item4", "item5", "item6")))
             .processor(new ItemProcessor<String, String>() {
 
 				@Override
 				public String process(String item) throws Exception {
-					Thread.sleep(300);
-					System.out.println("item = " + item);
-					return "my" + item;
+					return "my_" + item;
 				}
             	
 			})
             .writer(items ->{
-            	Thread.sleep(300);
-            	System.out.println("items = "+ items);
+            	Thread.sleep(1000);
+            	items.forEach(item ->{
+            		System.out.println("items = "+ item);
+            	}
+            			) ;
+            	System.out.println("============== ");
 			})
             .build();
     }
@@ -64,6 +66,7 @@ public class ChunkConfig {
     public Step step2() {
         return stepBuilderFactory.get("step2")
     	    .tasklet((contribution, chunkContext) -> {
+    	    	System.out.println("step2 has executed");
             	return RepeatStatus.FINISHED;
             })
             .build();
