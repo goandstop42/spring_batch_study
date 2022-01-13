@@ -2,6 +2,10 @@
 spring:
   profiles:
     active: local
+  batch:
+    job:
+      enabled: true
+      names: ${job.name:NONE}
 
 ---
 spring:
@@ -15,7 +19,5 @@ spring:
       password: springbatch
       driver-class-name: com.mysql.jdbc.Driver
   batch:
-    job:
-      names: batchJob
     jdbc:
       initialize-schema: always

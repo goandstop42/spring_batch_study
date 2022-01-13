@@ -16,58 +16,57 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @RequiredArgsConstructor
 @Configuration
 public class FlatFilesConfig {
-	private final JobBuilderFactory jobBuilderFactory;
-	private final StepBuilderFactory stepBuilderFactory;
 
+    private final JobBuilderFactory jobBuilderFactory;
+    private final StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job job() {
+        return jobBuilderFactory.get("batchJob")
+                .start(step1())
+                .next(step2())
+                .build();
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
 	@Bean
-	public Job batchJob() {
-		return jobBuilderFactory.get("batchJob")
-//        	.incrementer(new RunIdIncrementer())
-				.start(step1()).next(step2()).build();
-	}
+    public Step step1() {
+        return stepBuilderFactory.get("step1")
+                .<String, String>chunk(5)
+                .reader(itemReader())
+                .writer((items) -> {
+                        System.out.println("items = " + items);
+                })
+                .build();
+    }
 
-	@SuppressWarnings("unchecked")
-	@Bean
-	public Step step1() {
-		return stepBuilderFactory.get("step1")
-				.<String, String>chunk(5)
-				.reader(itemReader())
-				.writer(new ItemWriter() {
-					@Override
-					public void write(List items) throws Exception {
-						System.out.println("itmes = " + items);
-				}
+    @Bean
+    public Step step2() {
+        return stepBuilderFactory.get("step2")
+                .tasklet((contribution, chunkContext) -> {
+                    System.out.println("step2 has executed");
+                    return RepeatStatus.FINISHED;
+                })
+                .build();
+    }
 
-		}).build();
-	}
+    @Bean
+    public ItemReader itemReader(){
 
-	@Bean
-	public ItemReader itemReader() {
-		FlatFileItemReader<Customer> itemReader = new FlatFileItemReader<>();
-		itemReader.setResource(new ClassPathResource("/customer.csv"));
+        FlatFileItemReader<Customer> itemReader = new FlatFileItemReader<>();
+        itemReader.setResource(new ClassPathResource("/customer.csv"));
 
-		DefaultLineMapper<Customer> lineMapper = new DefaultLineMapper<>();
-		lineMapper.setSetLineTokenizeri(new DelimitedLineTokenizer());
-		lineMapper.setFieldSetMapper(new CustomerFieldSetMapper());
+        DefaultLineMapper<Customer> lineMapper = new DefaultLineMapper<>();
+        lineMapper.setLineTokenizer(new DelimitedLineTokenizer());
+        lineMapper.setFieldSetMapper(new CustomerFieldSetMapper());
 
-		itemReader.setLineMapper(lineMapper);
-		itemReader.setLinesToSkip(1);
+        itemReader.setLineMapper(lineMapper);
+        itemReader.setLinesToSkip(1);
 
-		return itemReader;
-
-	}
-
-	@Bean
-	public Step step2() {
-		return stepBuilderFactory.get("step2").tasklet((contribution, chunkContext) -> {
-			System.out.println("step2 has executed");
-			return RepeatStatus.FINISHED;
-		}).build();
-	}
+        return itemReader;
+    }
 }
