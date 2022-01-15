@@ -38,8 +38,11 @@ public class FlatFilesConfig {
         return stepBuilderFactory.get("step1")
                 .<String, String>chunk(5)
                 .reader(itemReader())
-                .writer((items) -> {
+                .writer(new ItemWriter() {
+                    @Override
+                    public void write(List items) throws Exception {
                         System.out.println("items = " + items);
+                    }
                 })
                 .build();
     }
