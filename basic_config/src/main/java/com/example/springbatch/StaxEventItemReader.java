@@ -1,6 +1,7 @@
 package com.example.springbatch;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -8,22 +9,18 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
-import org.springframework.batch.item.file.transform.Range;
+import org.springframework.batch.item.xml.builder.StaxEventItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.oxm.xstream.XStreamMarshaller;
 
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class ExceptionHandlingConfig {
+public class StaxEventItemReader {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -40,18 +37,45 @@ public class ExceptionHandlingConfig {
 	@Bean
     public Step step1() {
         return stepBuilderFactory.get("step1")
-                .<String, String>chunk(5)
-                .reader(itemReader())
-                .writer(new ItemWriter() {
-                    @Override
-                    public void write(List items) throws Exception {
-                        System.out.println("items = " + items);
-                    }
-                })
+                .<Customer, Customer>chunk(3)
+                .reader(customItemReader())
+                .writer(customItemWriter())
+                .build();
+    }
+
+
+    @Bean
+    public ItemReader<? extends Customer> customItemReader() {
+        return new StaxEventItemReaderBuilder<Customer>()
+                .name("xmlFileItemReader")
+                .resource(new ClassPathResource("customer.xml"))
+                .addFragmentRootElements("customer")
+                .unmarshaller(itemMarshaller())
                 .build();
     }
 
     @Bean
+    public ItemWriter<Customer> customItemWriter() {
+        return items -> {
+            for (Customer item : items) {
+                System.out.println(item.toString());
+            }
+        };
+    }
+
+    @Bean
+    public XStreamMarshaller itemMarshaller() {
+        Map<String, Class<?>> aliases = new HashMap<>();
+        aliases.put("customer", Customer.class);
+        aliases.put("id", Long.class);
+        aliases.put("name", String.class);
+        aliases.put("age", Integer.class);
+        XStreamMarshaller xStreamMarshaller = new XStreamMarshaller();
+        xStreamMarshaller.setAliases(aliases);
+        return xStreamMarshaller;
+    }
+    
+	@Bean
     public Step step2() {
         return stepBuilderFactory.get("step2")
                 .tasklet((contribution, chunkContext) -> {
@@ -61,19 +85,4 @@ public class ExceptionHandlingConfig {
                 .build();
     }
 
-    public FlatFileItemReader itemReader(){
-        return new FlatFileItemReaderBuilder<Customer>()
-        		.name("flatFile")
-        		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.txt"))
-        		.fieldSetMapper(new BeanWrapperFieldSetMapper<>())
-        		.targetType(Customer.class)
-        		.linesToSkip(1)
-        		.fixedLength()
-        		.strict(false)
-        		.addColumns(new Range(1, 5))
-        		.addColumns(new Range(6, 9))
-        		.addColumns(new Range(10, 11))
-        		.names("name", "year", "age")
-        		.build();
-    }
 }
