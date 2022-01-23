@@ -7,8 +7,11 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.json.JacksonJsonObjectReader;
+import org.springframework.batch.item.json.builder.JsonItemReaderBuilder;
 import org.springframework.batch.item.xml.builder.StaxEventItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class StaxEventItemReader {
+public class JsonConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -28,8 +31,8 @@ public class StaxEventItemReader {
     @Bean
     public Job job() {
         return jobBuilderFactory.get("batchJob")
-                .start(step1())
-                .next(step2())
+                .incrementer(new RunIdIncrementer())
+        		.start(step1())
                 .build();
     }
 
@@ -46,11 +49,10 @@ public class StaxEventItemReader {
 
     @Bean
     public ItemReader<? extends Customer> customItemReader() {
-        return new StaxEventItemReaderBuilder<Customer>()
-                .name("xmlFileItemReader")
-                .resource(new ClassPathResource("customer.xml"))
-                .addFragmentRootElements("customer")
-                .unmarshaller(itemMarshaller())
+        return new JsonItemReaderBuilder<Customer>()
+        		.name("jsonReader")
+        		.resource(new ClassPathResource("customer.json"))
+        		.jsonObjectReader(new JacksonJsonObjectReader<>(Customer.class))
                 .build();
     }
 
@@ -61,28 +63,6 @@ public class StaxEventItemReader {
                 System.out.println(item.toString());
             }
         };
-    }
-
-    @Bean
-    public XStreamMarshaller itemMarshaller() {
-        Map<String, Class<?>> aliases = new HashMap<>();
-        aliases.put("customer", Customer.class);
-        aliases.put("id", Long.class);
-        aliases.put("name", String.class);
-        aliases.put("age", Integer.class);
-        XStreamMarshaller xStreamMarshaller = new XStreamMarshaller();
-        xStreamMarshaller.setAliases(aliases);
-        return xStreamMarshaller;
-    }
-    
-	@Bean
-    public Step step2() {
-        return stepBuilderFactory.get("step2")
-                .tasklet((contribution, chunkContext) -> {
-                    System.out.println("step2 has executed");
-                    return RepeatStatus.FINISHED;
-                })
-                .build();
     }
 
 }
