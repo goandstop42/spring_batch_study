@@ -1,5 +1,9 @@
 package com.example.springbatch;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
@@ -9,7 +13,7 @@ import org.springframework.batch.core.configuration.annotation.StepBuilderFactor
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.batch.item.database.builder.JpaCursorItemReaderBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,11 +21,12 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class JdbcCursorReaderConfiguration {
+public class JpaCursorConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
-    private int chunkSize = 10;
+    private final EntityManagerFactory entityManagerFactory;
+    private int chunkSize = 5;
     private final DataSource dataSource;
     
     @Bean
@@ -53,13 +58,14 @@ public class JdbcCursorReaderConfiguration {
 
     @Bean
 	public ItemReader<Customer> customItemReader() {
-    	return new JdbcCursorItemReaderBuilder<Customer>()
-    			.name("jdbcCursorItemReader")
-    			.fetchSize(chunkSize)
-    			.sql("select id, firstName, lastName, birthdate from customer where firstName like ? order by lastName, firstName")
-    			.beanRowMapper(Customer.class)
-    			.queryArguments("A%")
-    			.dataSource(dataSource)
+    	Map<String, Object> parameters = new HashMap<>();
+    	parameters.put("firstname", "A%");
+    	
+    	return new JpaCursorItemReaderBuilder<Customer>()
+    			.name("jpaCursorItemReader")
+    			.entityManagerFactory(entityManagerFactory)
+    			.queryString("select c from Customer c where firstname like :firstname")
+    			.parameterValues(parameters)
     			.build();
 				
 	
