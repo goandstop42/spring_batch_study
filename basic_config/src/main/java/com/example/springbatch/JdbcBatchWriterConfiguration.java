@@ -14,6 +14,7 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.Order;
 import org.springframework.batch.item.database.PagingQueryProvider;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.support.MySqlPagingQueryProvider;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
 import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
@@ -29,11 +30,11 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class JsonWriterConfiguration {
+public class JdbcBatchWriterConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
-    private int chunkSize = 2;
+    private int chunkSize = 5;
     private final DataSource dataSource;
     
     @Bean
@@ -56,27 +57,11 @@ public class JsonWriterConfiguration {
 
     @Bean
     public ItemWriter<Customer> customItemWriter() {
-        return new JsonFileItemWriterBuilder<Customer>()
-        		.name("jsonFileItemWriter")
-        		.jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
-        		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.json"))
+        return new JdbcBatchItemWriterBuilder<Customer>()
+        		.dataSource(dataSource)
+        		.sql("insert into customer2 values(:id, :firstName, :lastName, :birthdate)")
+        		.beanMapped()
         		.build();
-	}
-
-    @Bean
-    public Marshaller itemMarshaller() {
-		
-    	Map<String, Class<?>> alias = new HashMap<>();
-    	alias.put("customer", Customer.class );
-    	alias.put("id", Long.class);
-    	alias.put("firstName", String.class );
-    	alias.put("lastName", String.class );
-    	alias.put("birthDate", String.class);
-    	
-    	XStreamMarshaller xStreamMarshaller= new XStreamMarshaller();
-    	xStreamMarshaller.setAliases(alias);
-    	
-    	return xStreamMarshaller;
 	}
 
 	@Bean
@@ -106,25 +91,5 @@ public class JsonWriterConfiguration {
 
         return reader;
     }
-
-    @Bean
-	public PagingQueryProvider createQueryProvider() throws Exception {
-    	
-
-    	
-    	SqlPagingQueryProviderFactoryBean queryProvider =
-    			new SqlPagingQueryProviderFactoryBean();
-    	queryProvider.setDataSource(dataSource);
-    	queryProvider.setSelectClause("id, firstname, lastname, birthdate");
-    	queryProvider.setFromClause("from customer");
-    	queryProvider.setWhereClause("where firstname like :firstname");
-    	
-    	Map<String, Order> sortKeys = new HashMap<>();
-    	sortKeys.put("id", Order.ASCENDING);
-    	sortKeys.put("firstname", Order.ASCENDING);
-    	
-    	queryProvider.setSortKeys(sortKeys);
-		 return queryProvider.getObject();
-	}
 
 }
