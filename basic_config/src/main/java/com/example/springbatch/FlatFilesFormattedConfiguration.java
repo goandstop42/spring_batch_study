@@ -27,13 +27,11 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class FlatFileItemWriterConfiguration {
+public class FlatFilesFormattedConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
-    private final EntityManagerFactory entityManagerFactory;
     private int chunkSize = 5;
-    private final DataSource dataSource;
     
     @Bean
     public Job job() {
@@ -58,10 +56,9 @@ public class FlatFileItemWriterConfiguration {
         return new FlatFileItemWriterBuilder<>()
         		.name("flatFileWriter")
         		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.txt"))
-        		.append(true)// 기존 데이터에 추가
-        		.shouldDeleteIfEmpty(true) // 데이터가 없으면 파일 삭제
-        		.delimited()
-        		.delimiter("|")
+        		.append(true)
+        		.formatted()
+        		.format("%-2d%-6s%-2d")
         		.names(new String[] {"id", "name", "age"})
         		.build();
         		
@@ -73,8 +70,8 @@ public class FlatFileItemWriterConfiguration {
     			new Customer(2L, "moon2", 42),
     			new Customer(3L, "moon3", 43));
     	
-//    	ListItemReader<Customer> reader = new ListItemReader<>(customer);
-    	ListItemReader<Customer> reader = new ListItemReader<>(Collections.emptyList()); // 객체 빈값
+    	ListItemReader<Customer> reader = new ListItemReader<>(customer);
+//    	ListItemReader<Customer> reader = new ListItemReader<>(Collections.emptyList()); // 객체 빈값
     	return reader;
 				
 	
