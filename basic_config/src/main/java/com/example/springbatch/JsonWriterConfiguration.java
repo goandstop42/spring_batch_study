@@ -16,6 +16,8 @@ import org.springframework.batch.item.database.Order;
 import org.springframework.batch.item.database.PagingQueryProvider;
 import org.springframework.batch.item.database.support.MySqlPagingQueryProvider;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
+import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
+import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.batch.item.xml.builder.StaxEventItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +29,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class XmlWriterConfiguration {
+public class JsonWriterConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -54,11 +56,10 @@ public class XmlWriterConfiguration {
 
     @Bean
     public ItemWriter<Customer> customItemWriter() {
-        return new StaxEventItemWriterBuilder<Customer>()
-        		.name("staxEventItemWriter")
-        		.marshaller(itemMarshaller())
-        		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.xml"))
-        		.rootTagName("customer")
+        return new JsonFileItemWriterBuilder<Customer>()
+        		.name("jsonFileItemWriter")
+        		.jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
+        		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.json"))
         		.build();
 	}
 
