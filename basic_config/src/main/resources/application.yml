@@ -6,6 +6,9 @@ spring:
     job:
       enabled: true
       names: batchJob
+logging:
+  pattern:
+    console: "[%d{HH:mm:ss.SSS}]-[%-5level]-[%logger.%method:line%line] - %msg%n"
 
 ---
 spring:
