@@ -3,7 +3,6 @@ package com.example.springbatch;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
@@ -11,21 +10,24 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.Order;
 import org.springframework.batch.item.database.PagingQueryProvider;
-import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
+import org.springframework.batch.item.database.support.MySqlPagingQueryProvider;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
+import org.springframework.batch.item.xml.builder.StaxEventItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.oxm.Marshaller;
+import org.springframework.oxm.xstream.XStreamMarshaller;
 
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class JdbcPagingConfiguration {
+public class XmlWriterConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -52,31 +54,57 @@ public class JdbcPagingConfiguration {
 
     @Bean
     public ItemWriter<Customer> customItemWriter() {
-        return items -> {
-        	System.out.println("==paging==");
-            for (Customer item : items) {
-                System.out.println(item.toString());
-            }
-        };
+        return new StaxEventItemWriterBuilder<Customer>()
+        		.name("staxEventItemWriter")
+        		.marshaller(itemMarshaller())
+        		.resource(new FileSystemResource("C:\\Users\\samsung\\git\\repository\\basic_config\\src\\main\\resources\\customer.xml"))
+        		.rootTagName("customer")
+        		.build();
 	}
 
     @Bean
-	public ItemReader<Customer> customItemReader() throws Exception {
+    public Marshaller itemMarshaller() {
+		
+    	Map<String, Class<?>> alias = new HashMap<>();
+    	alias.put("customer", Customer.class );
+    	alias.put("id", Long.class);
+    	alias.put("firstName", String.class );
+    	alias.put("lastName", String.class );
+    	alias.put("birthDate", String.class);
     	
-    	Map<String, Object> parameters = new HashMap<>();
-    	parameters.put("firstname", "A%");
+    	XStreamMarshaller xStreamMarshaller= new XStreamMarshaller();
+    	xStreamMarshaller.setAliases(alias);
     	
-    	return new JdbcPagingItemReaderBuilder<Customer>()
-    			.name("jdbcPagingItemReader")
-    			.pageSize(2)
-    			.dataSource(dataSource)
-    			.rowMapper(new BeanPropertyRowMapper<>(Customer.class))
-    			.queryProvider(createQueryProvider())
-    			.parameterValues(parameters)
-    			.build();
-				
-	
+    	return xStreamMarshaller;
 	}
+
+	@Bean
+    public JdbcPagingItemReader<Customer> customItemReader() {
+
+        JdbcPagingItemReader<Customer> reader = new JdbcPagingItemReader<>();
+
+        reader.setDataSource(this.dataSource);
+        reader.setFetchSize(10);
+        reader.setRowMapper(new CustomerRowMapper());
+
+        MySqlPagingQueryProvider queryProvider = new MySqlPagingQueryProvider();
+        queryProvider.setSelectClause("id, firstName, lastName, birthdate");
+        queryProvider.setFromClause("from customer");
+        queryProvider.setWhereClause("where firstname like :firstname");
+
+        Map<String, Order> sortKeys = new HashMap<>(1);
+
+        sortKeys.put("id", Order.ASCENDING);
+        queryProvider.setSortKeys(sortKeys);
+        reader.setQueryProvider(queryProvider);
+
+        HashMap<String, Object> parameters = new HashMap<>();
+        parameters.put("firstname", "A%");
+
+        reader.setParameterValues(parameters);
+
+        return reader;
+    }
 
     @Bean
 	public PagingQueryProvider createQueryProvider() throws Exception {
