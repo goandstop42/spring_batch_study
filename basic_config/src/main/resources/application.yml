@@ -6,6 +6,18 @@ spring:
     job:
       enabled: true
       names: batchJob
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL5InnoDBDialect
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+    hibernate:
+      ddl-auto: update
+
+logging:
+  pattern:
+    console: "[%d{HH:mm:ss.SSS}]-[%-5level]-[%logger.%method:line%line] - %msg%n"
 
 ---
 spring:

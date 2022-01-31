@@ -3,6 +3,7 @@ package com.example.springbatch;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
@@ -10,32 +11,26 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.Order;
-import org.springframework.batch.item.database.PagingQueryProvider;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.builder.JpaItemWriterBuilder;
 import org.springframework.batch.item.database.support.MySqlPagingQueryProvider;
-import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
-import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
-import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
-import org.springframework.batch.item.xml.builder.StaxEventItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.oxm.Marshaller;
-import org.springframework.oxm.xstream.XStreamMarshaller;
 
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class JdbcBatchWriterConfiguration {
+public class JpaItemWriterConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
     private int chunkSize = 5;
     private final DataSource dataSource;
+    private final EntityManagerFactory entityManagerFactory;
     
     @Bean
     public Job job() throws Exception {
@@ -49,20 +44,27 @@ public class JdbcBatchWriterConfiguration {
 	@Bean
     public Step step1() throws Exception {
         return stepBuilderFactory.get("step1")
-                .<Customer, Customer>chunk(2)
+                .<Customer, Customer2>chunk(2)
                 .reader(customItemReader())
+                .processor(customItemProcess())
                 .writer(customItemWriter())
                 .build();
     }
 
+
     @Bean
-    public ItemWriter<Customer> customItemWriter() {
-        return new JdbcBatchItemWriterBuilder<Customer>()
-        		.dataSource(dataSource)
-        		.sql("insert into customer2 values(:id, :firstName, :lastName, :birthdate)")
-        		.beanMapped()
-        		.build();
+	public ItemWriter<Customer2> customItemWriter() {
+		 return new JpaItemWriterBuilder<Customer2>()
+				 .usePersist(true)
+				 .entityManagerFactory(entityManagerFactory)
+				 .build();
 	}
+
+	private ItemProcessor<Customer, Customer2> customItemProcess() {
+		 return new CustomItemProcessor();
+	}
+
+
 
 	@Bean
     public JdbcPagingItemReader<Customer> customItemReader() {
