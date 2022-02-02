@@ -2,14 +2,13 @@ package com.example.springbatch;
 
 import org.springframework.batch.item.ItemProcessor;
 
-public class CustomItemProcessor implements ItemProcessor<String, String> {
+public class CustomItemProcessor implements ItemProcessor<ProcessorInfo, ProcessorInfo> {
 
-	int  cnt = 0;
-	
 	@Override
-	public String process(String item) throws Exception {
-		cnt++; 
-		return (item +cnt).toUpperCase();
+	public ProcessorInfo process(ProcessorInfo item) throws Exception {
+		
+		System.out.println("CustomItemProcessor 1 ");
+		return item;
 	}
 
 }

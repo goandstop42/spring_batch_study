@@ -1,7 +1,7 @@
 package com.example.springbatch;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -13,7 +13,7 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.NonTransientResourceException;
 import org.springframework.batch.item.ParseException;
 import org.springframework.batch.item.UnexpectedInputException;
-import org.springframework.batch.item.support.builder.CompositeItemProcessorBuilder;
+import org.springframework.batch.item.support.ClassifierCompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class CompositionItemConfiguration {
+public class ClassifierCompositeConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -38,33 +38,40 @@ public class CompositionItemConfiguration {
 	@Bean
     public Step step1() throws Exception {
         return stepBuilderFactory.get("step1")
-                .<String,String>chunk(chunkSize)
-                .reader(new ItemReader<String>() {
+                .<ProcessorInfo,ProcessorInfo>chunk(chunkSize)
+                .reader(new ItemReader<ProcessorInfo>() {
                 	int i = 0;
+
 					@Override
-					public String read()
+					public ProcessorInfo read()
 							throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
-						i++ ;
-						return i > 5? null : "item";
+						i++;
+						ProcessorInfo processorInfo = ProcessorInfo.builder().id(i).build();
+						
+						return i > 3 ? null : processorInfo;
 					}
+                	
 				})
                 .processor(customItemProcessor())
                 .writer(items ->System.out.println(items))
                 .build();
     }
 
-	@SuppressWarnings("unchecked")
 	@Bean
-	public ItemProcessor<? super String, ? extends String> customItemProcessor() {
+	public ItemProcessor<? super ProcessorInfo, ? extends ProcessorInfo> customItemProcessor() {
 		
-		List itemProcessor = new ArrayList();
-		itemProcessor.add(new CustomItemProcessor());
-		itemProcessor.add(new CustomItemProcessor2());
-		return new CompositeItemProcessorBuilder<>()
-				.delegates(itemProcessor)
-				.build();
+		ClassifierCompositeItemProcessor<ProcessorInfo, ProcessorInfo> processor =
+				new ClassifierCompositeItemProcessor<>();
+		ProcessorClassifier<ProcessorInfo, ItemProcessor<?, ? extends ProcessorInfo>> classifier = new ProcessorClassifier<>();
+		Map<Integer, ItemProcessor<ProcessorInfo, ProcessorInfo>> processorMap = new HashMap<>();
+		processorMap.put(1, new CustomItemProcessor());
+		processorMap.put(2, new CustomItemProcessor2());
+		processorMap.put(3, new CustomItemProcessor3());
+		
+		classifier.setProcessMap(processorMap);
+		processor.setClassifier(classifier);
+		
+		 return processor;
 	}
-
-
 
 }
