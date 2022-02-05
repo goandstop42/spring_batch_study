@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
-public class RepeatConfiguration {
+public class FaultTolerantConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
@@ -47,55 +47,34 @@ public class RepeatConfiguration {
         return stepBuilderFactory.get("step1")
                 .<String,String>chunk(chunkSize)
                 .reader(new ItemReader<String>() {
-                	int i = 0;
 
+                	int i = 0;
 					@Override
 					public String read()
 							throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
 						i++;
-						
-						return i > 3 ? null : "item" + i;
+						if(i ==1) {
+							throw new IllegalArgumentException("this exception is skipped");
+						}
+						return i > 3 ? null :"item" + i;
 					}
-                	
 				})
                 .processor(new ItemProcessor<String, String>() {
 
-                	RepeatTemplate repeatTemplate = new RepeatTemplate();
 					@Override
 					public String process(String item) throws Exception {
-						 
-//						repeatTemplate.setCompletionPolicy(new SimpleCompletionPolicy(3));
-//						repeatTemplate.setCompletionPolicy(new TimeoutTerminationPolicy(3000));
-						
-//						CompositeCompletionPolicy completionPolicy = new CompositeCompletionPolicy();
-//						CompletionPolicy[] completionPolicies = new CompletionPolicy[]{
-//																	new SimpleCompletionPolicy(3)
-//																	,new TimeoutTerminationPolicy(3000)};
-						
-					 	repeatTemplate.setExceptionHandler(simpleLimitExceptionHandler());
-					 	
-						repeatTemplate.iterate(new RepeatCallback() {
-							
-							@Override
-							public RepeatStatus doInIteration(RepeatContext context) throws Exception {
-								
-								System.out.println("repeatTempate is testing");
-								throw new RuntimeException("Exception is occurred");
-								
-//								return RepeatStatus.CONTINUABLE;
-							}
-						});
-						
-						return item;
+						throw new IllegalArgumentException("this exception retry"); 
+//						return "";
 					}
 				})
                 .writer(items ->System.out.println(items))
+                .faultTolerant()
+                .skip(IllegalArgumentException.class)
+                .skipLimit(2)
+                .retry(IllegalArgumentException.class)
+                .retryLimit(2)
                 .build();
     }
     
-    @Bean
-	public ExceptionHandler simpleLimitExceptionHandler() {
-		return new SimpleLimitExceptionHandler(3);
-	}
 
 }
